@@ -89,12 +89,12 @@ heatwave_daily = PRM_extreme_identification("h", Date, SHI, start_th_h, end_th_h
 wet_daily = PRM_extreme_identification("p", Date, SPI,start_th_p,end_th_p,...
     wet_removal_threshold, wet_merging_threshold ); % the ninth column records if this day is in a wet event (1 for yes, 0 for no)
 coldwave_daily = PRM_extreme_identification("c", Date, SHI, start_th_c, end_th_c,...
-    heatwave_removal_threshold, coldwave_merging_threshold); % the ninth column records if this day is in a heatwave (1 for yes, 0 for no)
+    coldwave_removal_threshold, coldwave_merging_threshold); % the ninth column records if this day is in a coldwave (1 for yes, 0 for no)
 
 drought_events = daily_2_events(drought_daily, "d"); % drought events
 heatwave_events = daily_2_events(heatwave_daily, "h"); % heatwave events
 wet_events = daily_2_events(wet_daily, "p"); % wet events
-coldwave_events = daily_2_events(coldwave_daily, "c"); % heatwave events
+coldwave_events = daily_2_events(coldwave_daily, "c"); % coldwave events
 
 %% Part 5: Identify compound events
 types=["d-and-h", "d-or-h", "d-cond-h", "h-cond-d", "d-and-c", "d-or-c", "d-cond-c", "c-cond-d", "p-and-c", "p-or-c", "p-cond-c", "c-cond-p", "d-and-c", "d-or-c", "d-cond-c", "c-cond-d", "p-and-h", "p-or-h", "p-cond-h", "h-cond-p"];
@@ -149,10 +149,8 @@ end
 
 %% Part 6: Plotting
 
-%% Part 6: Plotting
-
 % Define the year range for analysis
-year_range = [2022, 2022];
+year_range = [2021, 2021];
 time_lim = [t(365 * (year_range(1) - Date(1, 1)) + 1), t(365 * (year_range(2) - Date(1, 1)) + 365)];
 
 figure(1);
