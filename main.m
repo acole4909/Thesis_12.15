@@ -51,9 +51,10 @@ SPI = SPI_best_dist(Date, Pre, scale_p, NSP);
 % Parameter setting
 start_th_d=-1; end_th_d=-1; % pre-identification thresholds for droughts
 start_th_h=1;  end_th_h=1; %  pre-identification thresholds for heatwaves
+start_th_p=1;  end_th_p=1; %  pre-identification thresholds for wet events
+start_th_c=-1;  end_th_c=-1; %  pre-identification thresholds for heatwaves
 p=0.05;
 events_number_control=0.1; events_days_control=120;
-
 
 % Get removal and merging thresholds for droughts
 cc =  remo_merg("d",Date, SPI, ...
@@ -61,72 +62,202 @@ cc =  remo_merg("d",Date, SPI, ...
 drought_removal_threshold=cc(1)  
 drought_merging_threshold=cc(2)
 
-% Get removal and merging thresholds for heawtaves
+% Get removal and merging thresholds for heatwaves
 cc = remo_merg("h",Date, SHI, ...
     scale_T, p, start_th_h, end_th_h, events_number_control, events_days_control); % "h" represnets heatwaves
 heatwave_removal_threshold=cc(1) 
 heatwave_merging_threshold=cc(2)
+
+% Get removal and merging thresholds for wet events
+cc = remo_merg("p", Date, SPI, ...
+    scale_p, p, start_th_p, end_th_p, events_number_control, events_days_control); % "p" represents wet events
+wet_removal_threshold = cc(1);  
+wet_merging_threshold = cc(2);
+
+% Get removal and merging thresholds for cold waves
+cc = remo_merg("c",Date, SHI, ...
+    scale_T, p, start_th_c, end_th_c, events_number_control, events_days_control); % "c" represnets colwaves
+coldwave_removal_threshold=cc(1) 
+coldwave_merging_threshold=cc(2)
+
 
 %% Part 4: Identify drought and heatwave events
 drought_daily = PRM_extreme_identification("d", Date, SPI,start_th_d,end_th_d,...
     drought_removal_threshold, drought_merging_threshold ); % the ninth column records if this day is in a drought (1 for yes, 0 for no)
 heatwave_daily = PRM_extreme_identification("h", Date, SHI, start_th_h, end_th_h,...
     heatwave_removal_threshold, heatwave_merging_threshold); % the ninth column records if this day is in a heatwave (1 for yes, 0 for no)
+wet_daily = PRM_extreme_identification("p", Date, SPI,start_th_p,end_th_p,...
+    wet_removal_threshold, wet_merging_threshold ); % the ninth column records if this day is in a wet event (1 for yes, 0 for no)
+coldwave_daily = PRM_extreme_identification("c", Date, SHI, start_th_c, end_th_c,...
+    heatwave_removal_threshold, coldwave_merging_threshold); % the ninth column records if this day is in a heatwave (1 for yes, 0 for no)
 
 drought_events = daily_2_events(drought_daily, "d"); % drought events
 heatwave_events = daily_2_events(heatwave_daily, "h"); % heatwave events
+wet_events = daily_2_events(wet_daily, "p"); % wet events
+coldwave_events = daily_2_events(coldwave_daily, "c"); % heatwave events
 
 %% Part 5: Identify compound events
+types=["d-and-h", "d-or-h", "d-cond-h", "h-cond-d", "d-and-c", "d-or-c", "d-cond-c", "c-cond-d", "p-and-c", "p-or-c", "p-cond-c", "c-cond-p", "d-and-c", "d-or-c", "d-cond-c", "c-cond-d", "p-and-h", "p-or-h", "p-cond-h", "h-cond-p"];
+% Initialize storage for compound event results
+compound_events = cell(length(types), 1); % Cell array to hold results for each type
 
-types=["d-and-h", "d-or-h", "d-cond-h", "h-cond-d"];
-[~, compound_daily]=identify_compound( drought_daily, heatwave_daily, 1); % 1 represents "d-and-h"
+% Loop through each type and process compound events
+for i = 1:length(types)
+    type = types(i);
+    
+    % Determine which datasets and mode to use based on the type
+    switch type
+        case "d-and-h" % Drought and heatwaves
+            [~, compound_daily] = identify_compound(drought_daily, heatwave_daily, 1);
+        case "d-or-h" % Drought or heatwaves
+            [~, compound_daily] = identify_compound(drought_daily, heatwave_daily, 2);
+        case "d-cond-h" % Drought conditioned on heatwaves
+            [~, compound_daily] = identify_compound(drought_daily, heatwave_daily, 3);
+        case "h-cond-d" % Heatwaves conditioned on drought
+            [~, compound_daily] = identify_compound(drought_daily, heatwave_daily, 4);
+        case "d-and-c" % Drought and coldwaves
+            [~, compound_daily] = identify_compound(drought_daily, coldwave_daily, 1);
+        case "d-or-c" % Drought or coldwaves
+            [~, compound_daily] = identify_compound(drought_daily, coldwave_daily, 2);
+        case "d-cond-c" % Drought conditioned on coldwaves
+            [~, compound_daily] = identify_compound(drought_daily, coldwave_daily, 3);
+        case "c-cond-d" % Coldwaves conditioned on drought
+            [~, compound_daily] = identify_compound(drought_daily, coldwave_daily, 4);
+        case "p-and-c" % Wet events and coldwaves
+            [~, compound_daily] = identify_compound(wet_daily, coldwave_daily, 1);
+        case "p-or-c" % Wet events or coldwaves
+            [~, compound_daily] = identify_compound(wet_daily, coldwave_daily, 2);
+        case "p-cond-c" % Wet events conditioned on coldwaves
+            [~, compound_daily] = identify_compound(wet_daily, coldwave_daily, 3);
+        case "c-cond-p" % Coldwaves conditioned on wet events
+            [~, compound_daily] = identify_compound(wet_daily, coldwave_daily, 4);
+        case "p-and-h" % Wet events and heatwaves
+            [~, compound_daily] = identify_compound(wet_daily, heatwave_daily, 1);
+        case "p-or-h" % Wet events or heatwaves
+            [~, compound_daily] = identify_compound(wet_daily, heatwave_daily, 2);
+        case "p-cond-h" % Wet events conditioned on heatwaves
+            [~, compound_daily] = identify_compound(wet_daily, heatwave_daily, 3);
+        case "h-cond-p" % Heatwaves conditioned on wet events
+            [~, compound_daily] = identify_compound(wet_daily, heatwave_daily, 4);
+        otherwise
+            error('Unknown compound event type: %s', type);
+    end
+    
+    % Store the result in the cell array
+    compound_events{i} = compound_daily;
+end
 
 %% Part 6: Plotting
 
-% taking year 1976 as an example
-year_range=[1976, 1976];
-time_lim=[t( 365*( year_range(1) -Date(1,1) )+1), t( 365*( year_range(2) - Date(1,1) ) + 365) ] ;
+%% Part 6: Plotting
+
+% Define the year range for analysis
+year_range = [2022, 2022];
+time_lim = [t(365 * (year_range(1) - Date(1, 1)) + 1), t(365 * (year_range(2) - Date(1, 1)) + 365)];
 
 figure(1);
 
-% plot SPI and drought identification results
-ax(1)=subplot(8,1, [1:2]);
+% Plot SPI and drought identification results
+ax(1) = subplot(10, 1, [1:2]);
 hold on;
-cc=drought_daily(:, 4); cc(drought_daily(:, end - 1)==0 )=nan;   ba= bar(t, cc , 'FaceColor', [1, 0.8, 0 ]  );  ba(1).BarWidth=1;
-plot(t, SPI, '.-',  'color', [0.85,0.33,0.10], 'LineWidth', 0.8 );
-plot(t, start_th_d*ones(length(t), 1 ), 'r--',  'LineWidth', 0.5);
-xlim( time_lim );hold off; ylabel(' SPI '); grid on; ti=title('Drought'); set(ti , 'FontWeight', 'normal' )
-datetick('x','yyyy-mm' );   set(gca, 'xticklabel', []); box on;
+cc = drought_daily(:, 4);
+cc(drought_daily(:, end - 1) == 0) = nan;
+ba = bar(t, cc, 'FaceColor', [1, 0.8, 0]);
+ba(1).BarWidth = 1;
+plot(t, SPI, '.-', 'color', [0.85, 0.33, 0.10], 'LineWidth', 0.8);
+plot(t, start_th_d * ones(length(t), 1), 'r--', 'LineWidth', 0.5);
+xlim(time_lim);
+hold off;
+ylabel('SPI');
+grid on;
+title('Drought');
+datetick('x', 'yyyy-mm');
+set(gca, 'xticklabel', []);
+box on;
 
-% plot SHI and heatwave identification results
-ax(2)=subplot(8,1, [3:4] );
+% Plot SHI and heatwave identification results
+ax(2) = subplot(10, 1, [3:4]);
 hold on;
-cc=heatwave_daily(:, 4); cc(heatwave_daily(:, end - 1)==0 )=nan;   ba= bar(t, cc , 'FaceColor', [0.6, 0.8, 0.5 ]  );   ba(1).BarWidth=1;
-plot(t, SHI, '.-', 'color', [0.47,0.67,0.19],   'LineWidth', 0.8);
-plot(t, start_th_h*ones(length(t), 1 ), 'r--',  'LineWidth', 0.5 ); hold off;
-xlim( time_lim );  ylim( [-3, 3] );  ti=title('Heatwave'); set(ti , 'FontWeight', 'normal' )
-ylabel(' SHI '); grid on; datetick('x','yyyy-mm');  set(gca, 'xticklabel', []); box on;
+cc = heatwave_daily(:, 4);
+cc(heatwave_daily(:, end - 1) == 0) = nan;
+ba = bar(t, cc, 'FaceColor', [0.6, 0.8, 0.5]);
+ba(1).BarWidth = 1;
+plot(t, SHI, '.-', 'color', [0.47, 0.67, 0.19], 'LineWidth', 0.8);
+plot(t, start_th_h * ones(length(t), 1), 'r--', 'LineWidth', 0.5);
+hold off;
+xlim(time_lim);
+ylim([-3, 3]);
+title('Heatwave');
+ylabel('SHI');
+grid on;
+datetick('x', 'yyyy-mm');
+set(gca, 'xticklabel', []);
+box on;
 
-% Compound events identification results
-for i=1:4
-    type=i;
-    compound=identify_compound(drought_daily, heatwave_daily, type);
+% Plot coldwave identification results
+ax(3) = subplot(10, 1, [5:6]);
+hold on;
+cc = coldwave_daily(:, 4);
+cc(coldwave_daily(:, end - 1) == 0) = nan;
+ba = bar(t, cc, 'FaceColor', [0.3, 0.5, 0.9]);
+ba(1).BarWidth = 1;
+plot(t, SHI, '.-', 'color', [0.2, 0.4, 0.8], 'LineWidth', 0.8);
+plot(t, start_th_c * ones(length(t), 1), 'r--', 'LineWidth', 0.5);
+hold off;
+xlim(time_lim);
+ylim([-3, 3]);
+title('Coldwave');
+ylabel('CWI');
+grid on;
+datetick('x', 'yyyy-mm');
+set(gca, 'xticklabel', []);
+box on;
 
-    ax=subplot( 8, 1, 4+i ); % for compound period
-    aa=get(ax,'position');
-    ax=subplot(8,1,4+i , 'Position',aa+[0,0,0,0]);
-    ba= bar(t, compound(:,1));   ba(1).BarWidth=2; ba(1).FaceColor=[0.5,0.5,0.5];
-    xlim( time_lim );  yticks([0, 1]); ylabel('CDHW'); set(gca, 'yticklabel', [])
-    ti = title(types(type)); set(ti , 'FontWeight', 'normal' );grid on;
+% Plot wet events identification results
+ax(4) = subplot(10, 1, [7:8]);
+hold on;
+cc = wet_daily(:, 4);
+cc(wet_daily(:, end - 1) == 0) = nan;
+ba = bar(t, cc, 'FaceColor', [0.2, 0.8, 0.8]);
+ba(1).BarWidth = 1;
+plot(t, SPI, '.-', 'color', [0.1, 0.7, 0.7], 'LineWidth', 0.8);
+plot(t, start_th_p * ones(length(t), 1), 'r--', 'LineWidth', 0.5);
+hold off;
+xlim(time_lim);
+title('Wet Events');
+ylabel('SPI');
+grid on;
+datetick('x', 'yyyy-mm');
+set(gca, 'xticklabel', []);
+box on;
 
-    if type<4
-        datetick('x','yyyy-mm');
+% Plot compound events for all types
+for i = 1:length(types)
+    type = i;
+    compound = identify_compound(drought_daily, heatwave_daily, type); % Update for the specific compound combination
+
+    ax(4 + i) = subplot(10, 1, 8 + i); % For compound period
+    ba = bar(t, compound(:, 1));
+    ba(1).BarWidth = 2;
+    ba(1).FaceColor = [0.5, 0.5, 0.5];
+    xlim(time_lim);
+    yticks([0, 1]);
+    ylabel('Compound');
+    set(gca, 'yticklabel', []);
+    title(types(type));
+    grid on;
+
+    if type < length(types)
+        datetick('x', 'yyyy-mm');
         set(gca, 'xticklabel', []);
     else
-        datetick('x','yyyy-mm'); xlabel('Date')
+        datetick('x', 'yyyy-mm');
+        xlabel('Date');
     end
 end
+
 linkaxes(ax, 'x');
-set(gcf, 'Position', [150, 120, 1000, 700]);
-% output
-% print(gcf,'identification_results.png','-dpng','-r600');
+set(gcf, 'Position', [150, 120, 1000, 800]);
+
+% Save the plot
+% print(gcf, 'identification_results.png', '-dpng', '-r600');
