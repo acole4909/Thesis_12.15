@@ -21,7 +21,8 @@
 %% Part 1: Load functions and data
 
 addpath(genpath('./02_src'));
-load('01_data/data0.mat'); 
+data = readtable('01_data/CGI_Weather_MATLAB_Formatted_2.csv')
+
 % which saved Pre(the daily precipitation), DMT(daily mean temperature), and Date (corresponding year, month, day) 
 
 % Data pre-processing:
