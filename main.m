@@ -260,3 +260,113 @@ set(gcf, 'Position', [150, 120, 1000, 800]);
 
 % Save the plot
 % print(gcf, 'identification_results.png', '-dpng', '-r600');
+
+%% Part 6: Plotting for 2021 (April 26th to October 29th)
+
+% Define the time range
+start_date = datetime(2021, 4, 26);
+end_date = datetime(2021, 10, 29);
+time_lim = [start_date, end_date];
+
+figure(1);
+
+% Plot SPI and drought identification results
+ax(1) = subplot(5, 1, 1); % 5 subplots, this is the 1st
+hold on;
+cc = drought_daily(:, 4);
+cc(drought_daily(:, end - 1) == 0) = nan;
+ba = bar(t, cc, 'FaceColor', [1, 0.8, 0]);
+ba(1).BarWidth = 1;
+plot(t, SPI, '.-', 'color', [0.85, 0.33, 0.10], 'LineWidth', 0.8);
+plot(t, start_th_d * ones(length(t), 1), 'r--', 'LineWidth', 0.5);
+xlim(time_lim);
+hold off;
+ylabel('SPI');
+grid on;
+title('Drought');
+datetick('x', 'yyyy-mm');
+set(gca, 'xticklabel', []);
+box on;
+
+% Plot SHI and heatwave identification results
+ax(2) = subplot(5, 1, 2); % 5 subplots, this is the 2nd
+hold on;
+cc = heatwave_daily(:, 4);
+cc(heatwave_daily(:, end - 1) == 0) = nan;
+ba = bar(t, cc, 'FaceColor', [0.6, 0.8, 0.5]);
+ba(1).BarWidth = 1;
+plot(t, SHI, '.-', 'color', [0.47, 0.67, 0.19], 'LineWidth', 0.8);
+plot(t, start_th_h * ones(length(t), 1), 'r--', 'LineWidth', 0.5);
+hold off;
+xlim(time_lim);
+ylim([-3, 3]);
+title('Heatwave');
+ylabel('SHI');
+grid on;
+datetick('x', 'yyyy-mm');
+set(gca, 'xticklabel', []);
+box on;
+
+% Plot SHI and coldwave identification results
+ax(3) = subplot(5, 1, 3); % 5 subplots, this is the 3rd
+hold on;
+cc = coldwave_daily(:, 4);
+cc(coldwave_daily(:, end - 1) == 0) = nan;
+ba = bar(t, cc, 'FaceColor', [0.3, 0.5, 0.9]);
+ba(1).BarWidth = 1;
+plot(t, SHI, '.-', 'color', [0.2, 0.4, 0.8], 'LineWidth', 0.8);
+plot(t, start_th_c * ones(length(t), 1), 'r--', 'LineWidth', 0.5);
+hold off;
+xlim(time_lim);
+ylim([-3, 3]);
+title('Coldwave');
+ylabel('SHI');
+grid on;
+datetick('x', 'yyyy-mm');
+set(gca, 'xticklabel', []);
+box on;
+
+% Plot SPI and wet events identification results
+ax(4) = subplot(5, 1, 4); % 5 subplots, this is the 4th
+hold on;
+cc = wet_daily(:, 4);
+cc(wet_daily(:, end - 1) == 0) = nan;
+ba = bar(t, cc, 'FaceColor', [0.2, 0.8, 0.8]);
+ba(1).BarWidth = 1;
+plot(t, SPI, '.-', 'color', [0.1, 0.7, 0.7], 'LineWidth', 0.8);
+plot(t, start_th_p * ones(length(t), 1), 'r--', 'LineWidth', 0.5);
+hold off;
+xlim(time_lim);
+title('Wet Events');
+ylabel('SPI');
+grid on;
+datetick('x', 'yyyy-mm');
+set(gca, 'xticklabel', []);
+box on;
+
+% Plot p-and-c compound events
+[~, compound_daily] = identify_compound(wet_daily, coldwave_daily, 1);
+compound_filtered = compound_daily(t >= start_date & t <= end_date, :); % Filter for date range
+dates_filtered = t(t >= start_date & t <= end_date);
+
+ax(5) = subplot(5, 1, 5); % 5 subplots, this is the 5th
+hold on;
+bar(dates_filtered, compound_filtered(:, end), 'FaceColor', [0.5, 0.5, 0.5], 'BarWidth', 1);
+xlim(time_lim);
+ylim([-0.5, 1.5]); % Binary values (0 or 1)
+yticks([0, 1]);
+ylabel('P-and-C');
+xlabel('Date');
+title('P-and-C Compound Events');
+grid on;
+datetick('x', 'yyyy-mm-dd', 'keeplimits');
+hold off;
+
+% Link axes for synchronization
+linkaxes(ax, 'x');
+
+% Adjust figure size
+set(gcf, 'Position', [150, 120, 1000, 800]);
+
+% Save the plot
+% print(gcf, 'compound_events_2021.png', '-dpng', '-r600');
